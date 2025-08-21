@@ -81,5 +81,5 @@ def predict():
 
 if __name__ == '__main__':
     server = Server(app.wsgi_app)
-    server.watch('C:/Users/tails/Capstone_toy/app/')
+    server.watch('.app/')
     server.serve(port=5000)
