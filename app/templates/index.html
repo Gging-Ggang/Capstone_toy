@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>AI-Generated Text Detector</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        margin: 2em;
+        background-color: #f8f9fa;
+        color: #333;
+      }
+      .container {
+        max-width: 700px;
+        margin: auto;
+        padding: 2em;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      h1 {
+        text-align: center;
+        color: #007bff;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+      }
+      textarea, .analysis-box {
+        width: 100%;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        font-size: 1em;
+        box-sizing: border-box;
+        min-height: 150px;
+        line-height: 1.5;
+      }
+      .analysis-box {
+        background-color: #f8f9fa;
+        margin-top: 1em;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .analysis-box span[id^="chunk-"] { /* Add cursor pointer to highlighted chunks */
+        cursor: pointer;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+        margin-bottom: 1em;
+        align-self: flex-start;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .result {
+        margin-top: 1.5em;
+        padding: 1.5em;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+      }
+      .result ul {
+        padding-left: 0;
+        list-style-type: none;
+      }
+      .result li {
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+      }
+      .result li.highlight-reason, .result li:hover {
+        background-color: #e9ecef;
+      }
+      .reason-chunk-red {
+        color: #dc3545;
+        font-weight: bold;
+      }
+      .reason-chunk-orange {
+        color: #fd7e14;
+        font-weight: bold;
+      }
+      .highlight-red {
+        background-color: rgba(255, 0, 0, 0.3);
+      }
+      .highlight-orange {
+        background-color: rgba(255, 165, 0, 0.4);
+      }
+      .bold {
+        font-weight: 900 !important;
+        background-color: rgba(0, 123, 255, 0.2) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>AI-Generated Text Detector</h1>
+      <form action="/predict" method="post">
+        <button type="submit">Analyze</button>
+        <textarea name="text" placeholder="Enter your text here...">{{ original_text if original_text }}</textarea>
+      </form>
+
+      {% if display_list %}
+        <div class="analysis-box">
+          {% for item in display_list %}{% if item.color %}<span class="highlight-{{ item.color }}" id="{{ item.chunk_id }}">{{ item.text }}</span>{% else %}{{ item.text }}{% endif %}{{ ' ' if not loop.last }}{% endfor %}
+        </div>
+      {% endif %}
+
+      {% if analysis_results %}
+        <div class="result">
+          <h3>Analysis Details</h3>
+          <ul>
+            {% for item in analysis_results %}
+              <li data-target-id="{{ item.chunk_id }}">
+                <span class="reason-chunk-{{ item.color }}">'{{ item.chunk_text }}'</span> {{ item.reason_text }}
+              </li>
+            {% endfor %}
+          </ul>
+          <hr>
+          <p><strong>Overall AI-Generated Probability: {{ probability }}%</strong></p>
+        </div>
+      {% elif probability is not none %}
+        <div class="result">
+            <p>분석 결과, AI가 작성한 것으로 의심되는 부분이 발견되지 않았습니다.</p>
+            <hr>
+            <p><strong>Overall AI-Generated Probability: {{ probability }}%</strong></p>
+        </div>
+      {% endif %}
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Hover on result list to bold text in analysis box
+        const analysisItems = document.querySelectorAll('.result li');
+        analysisItems.forEach(item => {
+          const targetId = item.getAttribute('data-target-id');
+          if (!targetId) return;
+
+          const spanToBold = document.getElementById(targetId);
+          if (!spanToBold) return;
+
+          item.addEventListener('mouseover', function() {
+            spanToBold.classList.add('bold');
+          });
+
+          item.addEventListener('mouseout', function() {
+            spanToBold.classList.remove('bold');
+          });
+        });
+
+        // Hover on analysis box text to highlight result list item
+        const highlightedSpans = document.querySelectorAll('.analysis-box span[id^="chunk-"]');
+        highlightedSpans.forEach(span => {
+          const chunkId = span.id;
+          const targetLi = document.querySelector(`.result li[data-target-id="${chunkId}"]`);
+          if (!targetLi) return;
+
+          span.addEventListener('mouseover', function() {
+            targetLi.classList.add('highlight-reason');
+          });
+
+          span.addEventListener('mouseout', function() {
+            targetLi.classList.remove('highlight-reason');
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
