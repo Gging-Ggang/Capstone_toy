@@ -14,21 +14,78 @@
       .container {
         max-width: 700px;
         margin: auto;
-        padding: 2em;
         background-color: #fff;
         border: 1px solid #dee2e6;
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        padding: 2em;
       }
       h1 {
         text-align: center;
+        margin-bottom: 1.5em;
         color: #007bff;
       }
-      form {
-        display: flex;
-        flex-direction: column;
+      .info-icon-container {
+        position: sticky;
+        top: 20px;
+        float: right;
+        z-index: 20;
+        margin-bottom: -24px; /* Prevent sticky element from taking up space */
+        display: flex; /* Make it a flex container */
+        align-items: center; /* Vertically align items */
+        gap: 10px; /* Space between icons */
       }
-      textarea, .analysis-box {
+      .info-icon-container .tooltip {
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px 8px; /* Added horizontal padding */
+        position: absolute;
+        z-index: 1;
+        top: 50%; /* Vertically center */
+        transform: translateY(-50%); /* Adjust for vertical centering */
+        right: 105%; /* Position to the left of the icon */
+        white-space: nowrap; /* Prevent text wrapping */
+      }
+      .info-icon-wrapper .tooltip,
+      .arrow-icon-wrapper .tooltip {
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .info-icon-wrapper:hover .tooltip,
+      .arrow-icon-wrapper:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+      }
+      .info-icon {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+      }
+      .arrow-icon {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* inoutcircular approximation, 0.3s */
+      }
+      .arrow-icon.rotated {
+        transform: rotate(180deg);
+      }
+      .info-icon-wrapper,
+      .arrow-icon-wrapper {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative; /* For tooltip positioning */
+      }
+      h3 {
+        color: #333; /* Darker color for better readability */
+      }
+      textarea {
         width: 100%;
         border-radius: 5px;
         border: 1px solid #ccc;
@@ -38,15 +95,6 @@
         min-height: 150px;
         line-height: 1.5;
       }
-      .analysis-box {
-        background-color: #f8f9fa;
-        margin-top: 1em;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-      }
-      .analysis-box span[id^="chunk-"] { /* Add cursor pointer to highlighted chunks */
-        cursor: pointer;
-      }
       button {
         background-color: #007bff;
         color: white;
@@ -55,30 +103,50 @@
         border-radius: 5px;
         cursor: pointer;
         font-size: 1em;
-        margin-bottom: 1em;
+        margin-top: 1em;
         align-self: flex-start;
       }
       button:hover {
         background-color: #0056b3;
       }
-      .result {
-        margin-top: 1.5em;
-        padding: 1.5em;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f8f9fa;
+      .sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #fff; /* Solid background to hide scrolling content underneath */
+        padding-top: 1em;
+        /* Add a bottom border to visually separate from scrolling content */
+        border-bottom: 1px solid #dee2e6;
+        /* Removed negative margins to fix text wrapping issue */
+        padding-left: 0; /* Adjusted padding */
+        padding-right: 0; /* Adjusted padding */
+        padding-bottom: 1em;
       }
-      .result ul {
+      #display-box {
+        /* The border has been removed as per user request */
+        padding: 1em 2em; /* Keep vertical padding, add horizontal padding */
+        margin-bottom: 1em;
+      }
+      .display-box-content {
+        max-height: 125px; /* Reduced height */
+        overflow-y: auto;
+        line-height: 1.6;
+        white-space: normal; /* Changed from pre-wrap for natural text flow */
+        word-wrap: break-word;
+      }
+      #analysis-box ul {
         padding-left: 0;
         list-style-type: none;
+        margin-top: 1em;
       }
-      .result li {
+      #analysis-box li {
         cursor: pointer;
-        padding: 5px;
-        border-radius: 3px;
+        padding: 8px;
+        border-radius: 5px;
         transition: background-color 0.2s;
+        margin-bottom: 5px;
       }
-      .result li.highlight-reason, .result li:hover {
+      #analysis-box li:hover {
         background-color: #e9ecef;
       }
       .reason-chunk-red {
@@ -95,29 +163,49 @@
       .highlight-orange {
         background-color: rgba(255, 165, 0, 0.4);
       }
-      .bold {
-        font-weight: 900 !important;
-        background-color: rgba(0, 123, 255, 0.2) !important;
+      .highlight-teal-border {
+        border: 2px solid teal;
+        border-radius: 4px;
+        padding: 0 2px;
+        margin: 0 -2px;
       }
     </style>
   </head>
   <body>
     <div class="container">
+      <div class="info-icon-container">
+        <div class="info-icon-wrapper">
+            <img src="{{ url_for('static', filename='icon/informationicon.png') }}" alt="Info" class="info-icon">
+            <span class="tooltip">연습용으로 만든 사이트입니다.<br>모든 내용은 사실과 관계없이<br>무작위로 정해집니다.</span>
+        </div>
+        <div class="arrow-icon-wrapper">
+            <img src="{{ url_for('static', filename='icon/arrowicon.png') }}" alt="Scroll" class="arrow-icon" id="arrow-icon">
+            <span class="tooltip" id="scroll-tooltip">맨 밑으로</span>
+        </div>
+      </div>
       <h1>AI-Generated Text Detector</h1>
-      <form action="/predict" method="post">
-        <button type="submit">Analyze</button>
-        <textarea name="text" placeholder="Enter your text here...">{{ original_text if original_text }}</textarea>
-      </form>
+      
+      <div id="input-box">
+        <form action="/predict" method="post">
+          <textarea name="text" placeholder="분석할 텍스트를 입력해주세요.">{{ original_text if original_text }}</textarea>
+          <button type="submit">Analyze</button>
+        </form>
+      </div>
 
       {% if display_list %}
-        <div class="analysis-box">
-          {% for item in display_list %}{% if item.color %}<span class="highlight-{{ item.color }}" id="{{ item.chunk_id }}">{{ item.text }}</span>{% else %}{{ item.text }}{% endif %}{{ ' ' if not loop.last }}{% endfor %}
+        <div class="sticky-header">
+          <div id="display-box">
+            <h3>의심되는 문장</h3>
+            <div class="display-box-content">
+              {% for item in display_list %}{% if item.text|trim %}{% if item.color %}<span class="highlight-{{ item.color }}" id="{{ item.chunk_id }}">{{ item.text | safe }}</span>{% else %}{{ item.text | safe }}{% endif %}{{ '' if loop.last else ' ' }}{% endif %}{% endfor %}
+            </div>
+          </div>
+          <h3>의심 문장 분석</h3>
         </div>
       {% endif %}
 
       {% if analysis_results %}
-        <div class="result">
-          <h3>Analysis Details</h3>
+        <div id="analysis-box">
           <ul>
             {% for item in analysis_results %}
               <li data-target-id="{{ item.chunk_id }}">
@@ -128,8 +216,8 @@
           <hr>
           <p><strong>Overall AI-Generated Probability: {{ probability }}%</strong></p>
         </div>
-      {% elif probability is not none %}
-        <div class="result">
+      {% elif original_text and not analysis_results %}
+        <div id="analysis-box">
             <p>분석 결과, AI가 작성한 것으로 의심되는 부분이 발견되지 않았습니다.</p>
             <hr>
             <p><strong>Overall AI-Generated Probability: {{ probability }}%</strong></p>
@@ -139,37 +227,74 @@
 
     <script>
       document.addEventListener('DOMContentLoaded', function() {
-        // Hover on result list to bold text in analysis box
-        const analysisItems = document.querySelectorAll('.result li');
+        const analysisItems = document.querySelectorAll('#analysis-box li');
+        const displayBox = document.querySelector('.display-box-content');
+        const arrowIcon = document.getElementById('arrow-icon');
+        const scrollTooltip = document.getElementById('scroll-tooltip');
+        const stickyHeader = document.querySelector('.sticky-header');
+
+        let isScrolledToTop = false;
+
+        function scrollToBottom() {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        function scrollToTop() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function handleScrollIconClick() {
+          if (isScrolledToTop) {
+            scrollToTop();
+          } else {
+            scrollToBottom();
+          }
+        }
+
+        // Initial click handler
+        arrowIcon.addEventListener('click', handleScrollIconClick);
+        scrollTooltip.addEventListener('click', handleScrollIconClick);
+
+        window.addEventListener('scroll', function() {
+          const stickyHeaderRect = stickyHeader.getBoundingClientRect();
+          const displayBoxRect = displayBox.getBoundingClientRect();
+
+          // Check if the sticky header (which contains displayBox) is at its sticky point
+          // We use stickyHeaderRect.top <= 0 to check if it's at the very top of the viewport
+          // and displayBoxRect.top <= stickyHeaderRect.height to check if displayBox is within the sticky header's visible area
+          const isSticky = stickyHeaderRect.top <= 0;
+
+          if (isSticky && !isScrolledToTop) {
+            // Scrolled down, display box is sticky
+            arrowIcon.classList.add('rotated');
+            scrollTooltip.textContent = '맨 위로';
+            isScrolledToTop = true;
+          } else if (!isSticky && isScrolledToTop) {
+            // Scrolled up, display box is no longer sticky
+            arrowIcon.classList.remove('rotated');
+            scrollTooltip.textContent = '맨 밑으로';
+            isScrolledToTop = false;
+          }
+        });
+
         analysisItems.forEach(item => {
           const targetId = item.getAttribute('data-target-id');
           if (!targetId) return;
 
-          const spanToBold = document.getElementById(targetId);
-          if (!spanToBold) return;
+          const spanToHighlight = document.getElementById(targetId);
+          if (!spanToHighlight) return;
 
           item.addEventListener('mouseover', function() {
-            spanToBold.classList.add('bold');
+            spanToHighlight.classList.add('highlight-teal-border');
+            // Scroll display box to the highlighted span
+            displayBox.scrollTo({
+              top: spanToHighlight.offsetTop - displayBox.offsetTop - (displayBox.clientHeight / 2) + (spanToHighlight.clientHeight / 2),
+              behavior: 'smooth'
+            });
           });
 
           item.addEventListener('mouseout', function() {
-            spanToBold.classList.remove('bold');
-          });
-        });
-
-        // Hover on analysis box text to highlight result list item
-        const highlightedSpans = document.querySelectorAll('.analysis-box span[id^="chunk-"]');
-        highlightedSpans.forEach(span => {
-          const chunkId = span.id;
-          const targetLi = document.querySelector(`.result li[data-target-id="${chunkId}"]`);
-          if (!targetLi) return;
-
-          span.addEventListener('mouseover', function() {
-            targetLi.classList.add('highlight-reason');
-          });
-
-          span.addEventListener('mouseout', function() {
-            targetLi.classList.remove('highlight-reason');
+            spanToHighlight.classList.remove('highlight-teal-border');
           });
         });
       });
